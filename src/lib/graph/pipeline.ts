@@ -1806,15 +1806,15 @@ async function investmentVerdictCompilerNode(state: typeof StateAnnotation.State
   const beneishM = layer1Scores.beneishM || {};
   
   const layer1Breached = !!(altmanZ.breached || beneishM.breached);
+  const programmaticAction = (finalConfidenceScore >= 60 && !layer1Breached) ? "INVEST" : "PASS";
 
-  const systemInstruction = `You are an elite Investment Committee Chairman.
-Evaluate all research inputs and deliver a final binary verdict: either "INVEST" (buy/bullish) or "PASS" (avoid/bearish/neutral).
-You must output a valid JSON object matching this structure:
+  const systemInstruction = `You are the Investment Committee Secretary.
+Your task is to compile a dynamic, executive reasoning summary explaining why the P-IIM model has generated a final recommendation of "${programmaticAction}" with a Calibrated Confidence Score of ${finalConfidenceScore}%.
+Do NOT make your own independent judgment or override the verdict. You must output a valid JSON object matching this structure:
 {
-  "action": "INVEST" | "PASS",
-  "reasoning": "A concise single-paragraph executive reasoning summary (maximum 3-4 sentences) that compiles all safety scores (Altman Z, Beneish M, Piotroski F), calibrated momentum/confidence score, and bull/bear risk factors into one definitive investment recommendation."
+  "action": "${programmaticAction}",
+  "reasoning": "A concise single-paragraph executive reasoning summary (maximum 3-4 sentences) that summarizes the safety floor scores (Altman Z-Score of ${altmanZ.score !== null ? altmanZ.score : 'N/A'}, Piotroski F-Score of ${piotroskiF.score !== null ? `${piotroskiF.score}/9` : 'N/A'}, Beneish M-Score of ${beneishM.score !== null ? beneishM.score : 'N/A'}), the confidence score of ${finalConfidenceScore}%, and explains how these inputs drove the P-IIM model's final recommendation of ${programmaticAction}."
 }
-Be highly critical. If there is a safety floor breach (Altman Z in distress zone or Beneish M showing manipulation), you must recommend "PASS".
 Format the output as raw JSON only. Do not wrap in markdown code blocks.`;
 
   const prompt = `Company: ${profile.name} (${profile.ticker})
@@ -1848,8 +1848,8 @@ Calibrated Verdict: ${state.verdict}`;
 
     const parsed = cleanAndParseJSON(response.text);
     const finalDecision = {
-      action: parsed.action === "INVEST" ? "INVEST" : "PASS",
-      reasoning: parsed.reasoning || `Recommend to ${parsed.action || 'PASS'} based on a calibrated confidence level of ${finalConfidenceScore}%.`
+      action: programmaticAction,
+      reasoning: parsed.reasoning || `Recommend to ${programmaticAction} based on a calibrated confidence level of ${finalConfidenceScore}%.`
     };
 
     sendProgress(config, nodeName, `Final Verdict Compiled: ${finalDecision.action}`, "succeeded");
